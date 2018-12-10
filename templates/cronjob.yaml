@@ -1,0 +1,46 @@
+{{- range .Values.cron.jobs }}
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ include "<CHARTNAME>.fullname" $ }}
+  labels:
+    app: {{ include "<CHARTNAME>.name" $ }}
+    chart: {{ include "<CHARTNAME>.chart" $ }}
+    release: {{ $.Release.Name }}
+    heritage: {{ $.Release.Service }}
+spec:
+  schedule: "{{ .schedule }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ $.Values.cron.historyLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ $.Values.cron.backoffLimit }}
+      # Pod Template
+      template:
+        spec:
+          restartPolicy: Never
+          selector:
+            matchLabels:
+              app: {{ include "<CHARTNAME>.name" $ }}
+              release: {{ $.Release.Name }}
+          containers:
+            - name: {{ $.Chart.Name }}
+              image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+              imagePullPolicy: {{ $.Values.image.pullPolicy }}
+              command: [ "/bin/sh", "-c", "{{ .command }}"]
+              resources:
+{{ toYaml $.Values.resources | indent 16 }}
+    {{- with $.Values.nodeSelector }}
+          nodeSelector:
+{{ toYaml . | indent 12 }}
+    {{- end }}
+    {{- with $.Values.affinity }}
+          affinity:
+{{ toYaml . | indent 12 }}
+    {{- end }}
+    {{- with $.Values.tolerations }}
+          tolerations:
+{{ toYaml . | indent 12 }}
+    {{- end }}
+{{- end }}
